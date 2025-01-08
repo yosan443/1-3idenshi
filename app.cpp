@@ -1,47 +1,33 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <regex>
 
 using namespace std;
 
-// KMPアルゴリズム用の部分マッチテーブルを作成
-vector<int> createPartialMatchTable(const string& pattern) {
-    int n = pattern.length();
-    vector<int> table(n, 0);
-    int j = 0;
-    
-    for (int i = 1; i < n; i++) {
-        while (j > 0 && pattern[i] != pattern[j]) {
-            j = table[j - 1];
-        }
-        if (pattern[i] == pattern[j]) {
-            j++;
-            table[i] = j;
-        }
-    }
-    return table;
-}
-
-// KMPアルゴリズムでパターン検索
-vector<int> kmpSearch(const string& text, const string& pattern) {
+// 正規表現によるパターン検索
+vector<int> regexSearch(const string& text, const string& pattern) {
     vector<int> positions;
-    vector<int> table = createPartialMatchTable(pattern);
-    int n = text.length();
-    int m = pattern.length();
-    int j = 0;
     
-    for (int i = 0; i < n; i++) {
-        while (j > 0 && text[i] != pattern[j]) {
-            j = table[j - 1];
-        }
-        if (text[i] == pattern[j]) {
-            j++;
-            if (j == m) {
-                positions.push_back(i - m + 1);
-                j = table[j - 1];
-            }
+    // ワイルドカード(*)を正規表現の.*?に変換
+    string regexPattern;
+    for (char c : pattern) {
+        if (c == '*') {
+            regexPattern += ".*?";
+        } else {
+            regexPattern += c;
         }
     }
+    
+    regex reg(regexPattern);
+    smatch matches;
+    string::const_iterator searchStart(text.cbegin());
+    
+    while (regex_search(searchStart, text.cend(), matches, reg)) {
+        positions.push_back(matches.position() + (searchStart - text.cbegin()));
+        searchStart = matches.suffix().first;
+    }
+    
     return positions;
 }
 
@@ -55,19 +41,27 @@ int main() {
         gene += bases[rand() % 4];
     }
     
-    cout << "検索パターンを入力してください: ";
-    string pattern;
-    cin >> pattern;
-    
-    // パターン検索
-    vector<int> positions = kmpSearch(gene, pattern);
-    
-    // 結果表示
-    cout << "パターンが見つかった位置: ";
-    for (int pos : positions) {
-        cout << pos << " ";
+    while (true) {
+        cout << "検索パターンを入力してください（終了する場合は'exit'と入力）: ";
+        string pattern;
+        cin >> pattern;
+        
+        if (pattern == "exit") {
+            break;
+        }
+        
+        // パターン検索
+        vector<int> positions = regexSearch(gene, pattern);
+        
+        // 結果表示
+        cout << "パターンが見つかった位置: ";
+        for (int pos : positions) {
+            cout << pos << " ";
+        }
+        cout << "\n合計出現回数: " << positions.size() << endl;
+        cout << "-------------------------" << endl;
     }
-    cout << "\n合計出現回数: " << positions.size() << endl;
     
+    cout << "プログラムを終了します" << endl;
     return 0;
 }
